@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Travel Budget Manager — plan your trip budget, then track every expense against it.">
+  <meta name="theme-color" content="#0d1117">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TravelBudget">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
+
+<script>
+/* ── Boot guard ──────────────────────────────────────────────────────────
+   Must run BEFORE any app code.
+   iOS Safari throws SecurityError on localStorage for file:// URLs.
+   An unguarded top-level access aborts the whole script, so nothing after
+   it is ever defined. We therefore never touch localStorage directly. */
+(function () {
+  var real = null;
+  try {
+    var k = '__probe' + Date.now();
+    window.localStorage.setItem(k, '1');
+    window.localStorage.removeItem(k);
+    real = window.localStorage;
+  } catch (e) {
+    real = null;
+  }
+
+  var mem = {};
+  var memStore = {
+    getItem: function (k) {
+      return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null;
+    },
+    setItem: function (k, v) { mem[k] = String(v); },
+    removeItem: function (k) { delete mem[k]; },
+    clear: function () { mem = {}; },
+    key: function (i) { return Object.keys(mem)[i] || null; }
+  };
+  try {
+    Object.defineProperty(memStore, 'length', {
+      get: function () { return Object.keys(mem).length; }
+    });
+  } catch (e) { memStore.length = 0; }
+
+  window.__LS = real || memStore;
+  window.__STORAGE_OK = !!real;
+})();
+
+/* ── Visible error reporter ──────────────────────────────────────────────
+   Days were lost to silent failures. Never again: any uncaught error is
+   shown on screen instead of leaving a dead button. */
+(function () {
+  function banner(bg, html) {
+    function paint() {
+      var d = document.createElement('div');
+      d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;' +
+        'background:' + bg + ';color:#fff;padding:10px 14px;' +
+        'font:600 13px/1.45 -apple-system,BlinkMacSystemFont,sans-serif;' +
+        'text-align:left;max-height:45%;overflow:auto;-webkit-overflow-scrolling:touch';
+      d.innerHTML = html;
+      d.addEventListener('click', function () { d.remove(); });
+      (document.body || document.documentElement).appendChild(d);
+    }
+    if (document.body) paint();
+    else document.addEventListener('DOMContentLoaded', paint);
+  }
+
+  window.addEventListener('error', function (ev) {
+    banner('#f85149',
+      '<b>JavaScript error &mdash; tap to dismiss</b><br>' +
+      String(ev.message || 'unknown') +
+      (ev.lineno ? '<br>line ' + ev.lineno : ''));
+  });
+
+  window.addEventListener('DOMContentLoaded', function () {
+    if (!window.__STORAGE_OK) {
+      banner('#d29922',
+        '<b>Storage unavailable &mdash; tap to dismiss</b><br>' +
+        'The app works, but trips will NOT be saved when you close it. ' +
+        'Open it from Safari (or its home-screen icon) to save data.');
+    }
+    /* If App never got defined, say so plainly rather than hanging. */
+    setTimeout(function () {
+      if (typeof App === 'undefined') {
+        banner('#f85149',
+          '<b>App failed to load</b><br>' +
+          'The page rendered but the application code did not finish. ' +
+          'Any error above shows why.');
+      }
+    }, 400);
+  });
+})();
+</script>
+<title>Travel Budget Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Flatpickr date picker -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Toast Notification ─────────────────────── -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- ── Confirm Dialog ─────────────────────────── -->
+  <div id="confirm-overlay" class="confirm-overlay hidden" role="dialog" aria-modal="true">
+    <div class="confirm-box">
+      <p id="confirm-msg"></p>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" class="btn btn-ghost" data-i18n="btn.cancel">Cancel</button>
+        <button id="confirm-ok"     class="btn btn-danger" data-i18n="btn.delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Itinerary Note Overlay ─────────────────── -->
+  <div id="note-overlay" class="note-overlay hidden" role="dialog" aria-modal="true">
+    <div class="note-box">
+      <h3 data-i18n="h.addnote">📝 Add Itinerary Note</h3>
+      <div class="form-group">
+        <label class="form-label" for="note-date">Date <span class="req">*</span></label>
+        <input id="note-date" class="form-input" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="note-text">Note <span class="req">*</span></label>
+        <textarea id="note-text" class="form-textarea" placeholder="e.g. Drive to Masai Mara Reserve — pack light day bag..." data-i18n-placeholder="ph.note" style="min-height:88px"></textarea>
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-ghost" onclick="App.closeNote()" data-i18n="btn.cancel">Cancel</button>
+        <button class="btn btn-primary" onclick="App.saveNote()" data-i18n="btn.addnote">+ Add Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AI Price Guide Popup ───────────────────── -->
+  <div id="ai-popup" class="ai-popup-overlay hidden" role="dialog" aria-modal="true">
+    <div class="ai-popup-box">
+      <div class="ai-popup-header">
+        <span class="ai-popup-title" data-i18n="ai.guide">🤖 AI Price Guide</span>
+        <button class="ai-close-btn" onclick="AI.close()" title="Close" data-i18n-title="ttl.close">✕</button>
+      </div>
+      <div class="ai-popup-body">
+        <div class="form-group">
+          <label class="form-label" for="ai-question">
+            <span data-i18n="ai.asklabel">Ask Gemini</span>
+            <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--text-muted);font-size:10px" data-i18n="ai.editq"> — edit question as needed</span>
+          </label>
+          <textarea id="ai-question" class="form-textarea" style="min-height:90px" placeholder="e.g. What is a typical economy airfare from JFK to Nairobi in October?" data-i18n-placeholder="ph.question"></textarea>
+        </div>
+        <button id="ai-ask-btn" class="btn btn-primary btn-full" onclick="AI.ask()" data-i18n="ai.ask">✨ Ask Gemini</button>
+        <div id="ai-response-wrap" style="display:none"></div>
+        <div id="ai-key-section" class="ai-key-section" style="display:none">
+          <div class="form-group">
+            <label class="form-label" for="ai-key-input">
+              <span data-i18n="ai.keylabel">Gemini API Key</span>
+              <a href="https://aistudio.google.com/apikey" target="_blank" class="ai-key-link" data-i18n="ai.getkey">Get free key ↗</a>
+            </label>
+            <input id="ai-key-input" class="form-input" type="password" placeholder="AIza..." data-i18n-placeholder="ph.key">
+            <div class="form-hint" data-i18n="ai.keylocal">Key is saved locally on your device only</div>
+          </div>
+          <button class="btn btn-secondary btn-full" onclick="AI.saveKey()" data-i18n="ai.savekey">💾 Save API Key</button>
+        </div>
+        <div style="margin-top:12px;text-align:center">
+          <button class="btn btn-ghost btn-sm" onclick="AI.toggleKeySection()" data-i18n="ai.setkey">🔑 Set / Change API Key</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 0 — WELCOME / ONBOARDING (first launch)
+       ══════════════════════════════════════════════ -->
+  <div id="screen-welcome" class="screen active">
+    <div class="screen-content">
+      <div class="welcome-bg">
+        <!-- Floating emoji particles (bounded to hero area) -->
+        <div class="welcome-lang"><select id="lang-select-welcome" class="lang-select" aria-label="Language" onchange="I18N.set(this.value)"><option value="en">English</option><option value="fr">Français</option><option value="es">Español</option></select></div>
+        <div class="wf-float-zone" aria-hidden="true">
+        <span class="wf-float" style="top:12%;left:7%;animation-delay:0s;pointer-events:none">✈️</span>
+        <span class="wf-float" style="top:8%;right:12%;animation-delay:1.4s;pointer-events:none">🌍</span>
+        <span class="wf-float" style="top:40%;left:4%;animation-delay:2.8s;pointer-events:none">🧳</span>
+        <span class="wf-float" style="top:20%;right:6%;animation-delay:0.7s;pointer-events:none">⭐</span>
+        <span class="wf-float" style="top:55%;right:8%;animation-delay:2.1s;pointer-events:none">🗺️</span>
+        <span class="wf-float" style="top:70%;left:10%;animation-delay:3.5s;pointer-events:none">🏖️</span>
+        </div>
+
+        <!-- Hero -->
+        <div class="welcome-hero">
+          <span class="welcome-globe">🌏</span>
+          <div class="welcome-title" data-i18n-html="wel.title">Travel Budget<br>Manager</div>
+          <div class="welcome-tagline" data-i18n-html="wel.tagline">The destination’s decided. Now — what will it cost?<br>Build the budget before you book. Track every expense after.</div>
+        </div>
+
+        <!-- Benefits -->
+        <div class="welcome-benefits">
+          <div class="benefit-card">
+            <span class="benefit-icon">💰</span>
+            <div class="benefit-text">
+              <h4 data-i18n="wel.c1.h">Budget Before You Book</h4>
+              <p data-i18n="wel.c1.p">Price the whole trip before committing to anything — flights, stays, transport, food, entertainment. See the total, then adjust until it fits.</p>
+            </div>
+          </div>
+          <div class="benefit-card">
+            <span class="benefit-icon">📊</span>
+            <div class="benefit-text">
+              <h4 data-i18n="wel.c2.h">3-Level Spending Tracker</h4>
+              <p data-i18n="wel.c2.p">Budget → Committed → Actual Paid — stay in control at every stage, in 150+ currencies with live exchange rates.</p>
+            </div>
+          </div>
+          <div class="benefit-card">
+            <span class="benefit-icon">🌐</span>
+            <div class="benefit-text">
+              <h4 data-i18n="wel.c3.h">Every Cost in One Place</h4>
+              <p data-i18n="wel.c3.p">Barcelona to Sevilla by road, or one city for a week — every leg, every category, one running total.</p>
+            </div>
+          </div>
+          <div class="benefit-card">
+            <span class="benefit-icon">✨</span>
+            <div class="benefit-text">
+              <h4 data-i18n="wel.c4.h">AI Budget Starter</h4>
+              <p data-i18n="wel.c4.p">Know your budget but not your destination? Answer five quick questions and get trip ideas that stretch it furthest — each with a starting budget you can adjust.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Welcome form. onsubmit is disabled so the page can never reload;
+             the button calls App.completeWelcome() directly. -->
+        <form id="welcome-form" onsubmit="return false;">
+          <div class="welcome-form">
+            <div class="form-group">
+              <label class="form-label" for="wf-name"><span data-i18n="wel.name.q">What's your name?</span> <span class="req">*</span></label>
+              <input id="wf-name" name="wf_name" class="form-input" type="text"
+                     placeholder="e.g. Sarah" data-i18n-placeholder="wel.ph.you" autocomplete="name" style="font-size:16px"
+                     enterkeyhint="go" inputmode="text">
+            </div>
+
+            <!-- Checkbox BEFORE label so CSS :checked ~ sibling rules work.
+                 Visually hidden; label tap toggles it natively (no JS needed). -->
+            <input type="checkbox" id="partner-cb" name="wf_partner" class="partner-cb-native">
+            <label for="partner-cb" class="partner-toggle-row" id="partner-toggle-row">
+              <span class="partner-toggle-label" data-i18n="wel.partner.q">🤝 Planning with a travel partner?</span>
+              <div class="toggle-sw" id="partner-sw"><div class="toggle-thumb"></div></div>
+            </label>
+
+            <!-- CSS shows this when #partner-cb is :checked — no JS needed -->
+            <div id="wf-partner-group" class="form-group" style="display:none">
+              <label class="form-label" for="wf-partner" data-i18n="wel.partner.lbl">Partner's name</label>
+              <input id="wf-partner" name="wf_partner_name" class="form-input" type="text"
+                     placeholder="e.g. Michael" data-i18n-placeholder="wel.ph.partner" autocomplete="given-name" style="font-size:16px">
+              <div class="share-tip" data-i18n-html="wel.partner.html">
+                📲 <strong>Planning together:</strong> Install the app on each device from the web address — on iPhone, open it in Safari, then Share → Add to Home Screen.<br>
+                Share trip data with the 📤 Export / 📥 Import buttons.<br>
+                <strong>Real-time sync</strong> is planned for a future version.
+              </div>
+            </div>
+          </div>
+
+          <div class="welcome-cta">
+            <button type="button" class="btn-welcome" id="btn-lets-go" onclick="App.completeWelcome()">
+              <span data-i18n="wel.start">Let's Start Planning!</span>
+              <span style="font-size:20px">🚀</span>
+            </button>
+            <button type="button" class="btn-welcome-back" id="btn-welcome-back" style="display:none" data-i18n="nav.back">
+              ← Back to My Trips
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 1 — MY TRIPS LIST
+       ══════════════════════════════════════════════ -->
+  <div id="screen-trips" class="screen">
+    <div class="trips-header">
+      <div class="brand">
+        <span class="brand-icon">🌍</span>
+        <div id="trips-greeting">
+          <div class="brand-name" data-i18n="app.brand1">Travel Budget</div>
+          <div class="brand-sub" data-i18n="app.brand2">Manager</div>
+        </div>
+        <!-- Sync status dot: green=server, yellow=portable -->
+        <div class="sync-dot" id="sync-dot" title="Sync status" data-i18n-title="ttl.sync"></div>
+      </div>
+      <div class="data-actions">
+        <select id="lang-select" class="lang-select" aria-label="Language" onchange="I18N.set(this.value)"><option value="en">English</option><option value="fr">Français</option><option value="es">Español</option></select>
+        <button class="btn-data" id="btn-help" title="Help &amp; guide" data-i18n-title="ttl.help" onclick="Help.open()">❓</button>
+        <button class="btn-data" id="btn-import" title="Import data from JSON file" data-i18n-title="ttl.import" onclick="App.importData()">📥</button>
+        <button class="btn-data" id="btn-export" title="Export data to JSON file" data-i18n-title="ttl.export" onclick="App.exportData()">📤</button>
+        <button id="btn-new-trip" class="btn-new-trip" title="New Trip" data-i18n-title="ttl.newtrip" onclick="App.goSetup()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Portable mode banner (shown when server is not running) -->
+    <div class="portable-banner hidden" id="portable-banner">
+      <span class="portable-banner-icon">📱</span>
+      <span data-i18n-html="nav.portable.html">
+        <strong>Portable mode</strong> — data is stored in this browser only.<br>
+        <a onclick="App.importData()">📥 Import</a> a backup to load your trips,
+        then <a onclick="App.exportData()">📤 Export</a> when done to save to Google Drive or OneDrive.
+      </span>
+    </div>
+
+    <div class="screen-content">
+      <div class="trips-list-container" id="trips-list">
+        <!-- Static fallback — JS overwrites this; shown if JS hasn't rendered yet -->
+        <div class="empty-state anim-in" id="trips-static-placeholder">
+          <span class="empty-state-icon">✈️</span>
+          <h3 data-i18n="wel.allset">You're all set!</h3>
+          <p>Tap <strong>+</strong> above to create your first trip and start planning your budget.</p>
+        </div>
+      </div>
+      <!-- Footer strip — About & Exit -->
+      <div class="trips-footer">
+        <button class="trips-footer-btn" onclick="App.goWelcome()" id="btn-about-app">
+          <span>🌟</span><span data-i18n="nav.about">About this app</span>
+        </button>
+        <div class="trips-footer-divider"></div>
+        <button class="trips-footer-btn" onclick="App.exitApp()" id="btn-exit-app">
+          <span>✕</span><span data-i18n="nav.exit">Exit</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 2 — TRIP SETUP / EDIT
+       ══════════════════════════════════════════════ -->
+  <div id="screen-setup" class="screen">
+    <div class="page-header">
+      <button class="btn-icon" onclick="Router.back()" title="Back" data-i18n-title="ttl.back" id="setup-back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h1 class="page-title" id="setup-title" data-i18n="nav.newtrip">New Trip</h1>
+    </div>
+    <div class="screen-content">
+      <!-- Discovery questionnaire panel (shown instead of form when discovering) -->
+      <div id="discovery-panel" class="form-container" style="display:none"></div>
+      <!-- Normal trip setup form -->
+      <div id="setup-form-wrap">
+        <div class="form-container" id="setup-form"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 3 — TRIP OVERVIEW
+       ══════════════════════════════════════════════ -->
+  <div id="screen-overview" class="screen">
+    <div class="screen-content has-bottom-nav">
+      <div id="overview-header" class="overview-header-wrap"></div>
+      <div id="overview-body"   class="overview-body"></div>
+    </div>
+    <nav class="bottom-nav" id="nav-overview">
+      <button class="nav-item nav-active" onclick="Router.go('overview')" id="nav-ov-home">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span data-i18n="nav.overview">Overview</span>
+      </button>
+      <button class="nav-item" onclick="Router.go('itinerary')" id="nav-ov-itin">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>
+        <span data-i18n="nav.itinerary">Itinerary</span>
+      </button>
+      <button class="nav-add-btn" onclick="App.goAddTransaction()" title="Add Transaction" data-i18n-title="ttl.addtxn" id="nav-ov-add">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="nav-item" onclick="Router.go('dashboard')" id="nav-ov-dash">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span data-i18n="nav.dashboard">Dashboard</span>
+      </button>
+      <button class="nav-item" onclick="Router.go('trips')" id="nav-ov-trips">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span data-i18n="nav.mytrips">My Trips</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 4 — CATEGORY DETAIL
+       ══════════════════════════════════════════════ -->
+  <div id="screen-category" class="screen">
+    <div id="cat-detail-header" class="cat-detail-header"></div>
+    <div class="screen-content has-bottom-nav">
+      <div id="cat-summary-row"></div>
+      <div id="cat-body" class="cat-body"></div>
+    </div>
+    <nav class="bottom-nav" id="nav-category">
+      <button class="nav-item" onclick="Router.go('overview')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span data-i18n="nav.overview">Overview</span>
+      </button>
+      <button class="nav-item" onclick="Router.go('itinerary')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span data-i18n="nav.itinerary">Itinerary</span>
+      </button>
+      <button class="nav-add-btn" onclick="App.goAddTransaction()" title="Add Transaction" data-i18n-title="ttl.addtxn" id="nav-cat-add">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="nav-item" onclick="Router.go('dashboard')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span data-i18n="nav.dashboard">Dashboard</span>
+      </button>
+      <button class="nav-item" onclick="Router.go('trips')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span data-i18n="nav.mytrips">My Trips</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 5 — BUDGET ITEM FORM
+       ══════════════════════════════════════════════ -->
+  <div id="screen-budget-item" class="screen">
+    <div class="page-header">
+      <button class="btn-icon" onclick="Router.back()" title="Back" data-i18n-title="ttl.back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="page-title" id="bi-title" data-i18n="h.addbudget">Add Budget</h2>
+    </div>
+    <div class="screen-content">
+      <div class="form-container" id="bi-form"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 6 — TRANSACTION FORM
+       ══════════════════════════════════════════════ -->
+  <div id="screen-transaction" class="screen">
+    <div class="page-header">
+      <button class="btn-icon" onclick="Router.back()" title="Back" data-i18n-title="ttl.back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="page-title" id="txn-title" data-i18n="h.addtxn">Add Transaction</h2>
+    </div>
+    <div class="screen-content">
+      <div class="form-container" id="txn-form"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 7 — DASHBOARD
+       ══════════════════════════════════════════════ -->
+  <div id="screen-dashboard" class="screen">
+    <div class="page-header">
+      <button class="btn-icon" onclick="Router.back()" title="Back" data-i18n-title="ttl.back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="page-title" data-i18n="nav.dashboard">Dashboard</h2>
+    </div>
+    <div class="screen-content has-bottom-nav">
+      <div class="dashboard-body" id="dashboard-body"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-item" onclick="Router.go('overview')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span data-i18n="nav.overview">Overview</span>
+      </button>
+      <button class="nav-item" onclick="Router.go('itinerary')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span data-i18n="nav.itinerary">Itinerary</span>
+      </button>
+      <button class="nav-add-btn" onclick="App.goAddTransaction()" title="Add Transaction" data-i18n-title="ttl.addtxn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button class="nav-item nav-active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span data-i18n="nav.dashboard">Dashboard</span>
+      </button>
+      <button class="nav-item" onclick="Router.go('trips')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span data-i18n="nav.mytrips">My Trips</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 8 — TRIP ITINERARY
+       ══════════════════════════════════════════════ -->
+  <div id="screen-itinerary" class="screen">
+    <div class="itin-page-header">
+      <button class="btn-icon" onclick="Router.back()" title="Back" data-i18n-title="ttl.back">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <h2 class="page-title" data-i18n="h.itinerary">Trip Itinerary</h2>
+      <button class="btn btn-primary btn-sm" onclick="App.openNoteForm()" style="flex-shrink:0" data-i18n="btn.note">+ Note</button>
+    </div>
+    <div class="screen-content has-bottom-nav">
+      <div class="itin-body" id="itinerary-body"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-item" onclick="Router.go('overview')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span data-i18n="nav.overview">Overview</span>
+      </button>
+      <button class="nav-item nav-active">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span data-i18n="nav.itinerary">Itinerary</span>
+      </button>
+      <button class="nav-add-btn" onclick="App.openNoteForm()" title="Add Note" data-i18n-title="ttl.addnote">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
+      <button class="nav-item" onclick="Router.go('dashboard')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span data-i18n="nav.dashboard">Dashboard</span>
+      </button>
+      <button class="nav-item" onclick="Router.go('trips')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span data-i18n="nav.mytrips">My Trips</span>
+      </button>
+    </nav>
+  </div>
+
+</div><!-- #app -->
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<!-- Flatpickr date picker -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+
+<!-- Register Service Worker for offline/PWA support -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js')
+        .then(function(reg) {
+          console.log('SW registered, scope:', reg.scope);
+        })
+        .catch(function(err) {
+          console.log('SW registration failed (expected on file://):', err.message);
+        });
+    });
+  }
+</script>
+</body>
+</html>
