@@ -14,7 +14,7 @@ By **TranZen** · Net proceeds from the paid editions support charitable causes 
 - **Three-level tracking** — Budget → Committed → Actual Paid, so you stay in control at every stage.
 - **Every cost in one place** — multi-city or multi-leg trips, every category, one running total, with live currency conversion.
 - **AI budget starter (optional)** — answer a few questions and get trip ideas with starting budgets you can adjust, via Google Gemini.
-- **Four languages** — English · Français · Español · Tiếng Việt.
+- **Three languages** — English · Français · Español ·
 
 ## Get it
 
