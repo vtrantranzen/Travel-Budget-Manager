@@ -1,25 +1,82 @@
 {
-  "name": "Travel Budget Manager",
-  "short_name": "TravelBudget",
-  "description": "Plan your trip budget, then track every expense against it.",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#0d1117",
-  "theme_color": "#0d1117",
-  "orientation": "portrait-primary",
+  "name": "GitHub",
+  "short_name": "GitHub",
+  "start_url": "/github.com/vtrantranzen/Travel-Budget-Manager/docs/",
+  "display": "fullscreen",
   "icons": [
     {
-      "src": "icons/icon-192.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "sizes": "114x114",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-114x114-09ce42d3ca4b.png"
     },
     {
-      "src": "icons/icon-512.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "sizes": "120x120",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-120x120-92bd46d04241.png"
+    },
+    {
+      "sizes": "144x144",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-144x144-b882e354c005.png"
+    },
+    {
+      "sizes": "152x152",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-152x152-5f777cdc30ae.png"
+    },
+    {
+      "sizes": "180x180",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-180x180-a80b8e11abe2.png"
+    },
+    {
+      "sizes": "57x57",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-57x57-22f09f5b3a64.png"
+    },
+    {
+      "sizes": "60x60",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-60x60-19037ac897bf.png"
+    },
+    {
+      "sizes": "72x72",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-72x72-e090c8a282d0.png"
+    },
+    {
+      "sizes": "76x76",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-76x76-a4523d80afb4.png"
+    },
+    {
+      "src": "https://github.githubassets.com/assets/app-icon-192-bcc967ab9829.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://github.githubassets.com/assets/app-icon-512-7f9c4ff2e960.png",
+      "type": "image/png",
+      "sizes": "512x512"
     }
   ],
-  "scope": "./"
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.github.android",
+      "id": "com.github.android"
+    }
+  ],
+  "theme_color": "#f0f058",
+  "background_color": "#494758",
+  "dir": "auto",
+  "lang": "en",
+  "orientation": "any",
+  "display_override": [
+    "fullscreen",
+    "standalone",
+    "window-controls-overlay",
+    "browser",
+    "minimal-ui"
+  ],
+  "description": "TBM is a PWA (Progressive Web Application) providing you a HTML file which can be used on phone, tablet and desktop devices.",
+  "categories": [
+    "finance",
+    "lifestyle",
+    "transportation",
+    "travel"
+  ],
+  "iarc_rating_id": "3+ "
 }
