@@ -1,6 +1,6 @@
 {
-  "name": "GitHub",
-  "short_name": "GitHub",
+  "name": "Travel Budget Manager",
+  "short_name": "TBM",
   "start_url": "/github.com/vtrantranzen/Travel-Budget-Manager/docs/",
   "display": "fullscreen",
   "icons": [
@@ -71,7 +71,7 @@
     "browser",
     "minimal-ui"
   ],
-  "description": "TBM is a PWA (Progressive Web Application) providing you a HTML file which can be used on phone, tablet and desktop devices.",
+  "description": "Plan your trip budget, then track every expense against it.",
   "categories": [
     "finance",
     "lifestyle",
