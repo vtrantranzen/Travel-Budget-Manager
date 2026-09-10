@@ -1,8 +1,8 @@
 {
   "name": "Travel Budget Manager",
   "short_name": "TBM",
-  "start_url": "/github.com/vtrantranzen/Travel-Budget-Manager/docs/",
-  "display": "fullscreen",
+  "start_url": "/",
+  "display": "standalone",
   "icons": [
     {
       "sizes": "114x114",
@@ -59,24 +59,20 @@
       "id": "com.github.android"
     }
   ],
-  "theme_color": "#f0f058",
-  "background_color": "#494758",
+  "theme_color": "#da4747",
+  "background_color": "#401212",
+  "id": "Travel Budget Manager",
+  "description": "Travel Budget Manager is a lightweight web app for building a trip budget before you book and keeping it honest while you travel — every leg, every category, one running total, in 150+ currencies with live exchange rates. An optional AI budget starter (Google Gemini) suggests trip ideas and starting budgets. It works in English, French, Spanish.",
   "dir": "auto",
   "lang": "en",
-  "orientation": "any",
-  "display_override": [
-    "fullscreen",
-    "standalone",
-    "window-controls-overlay",
-    "browser",
-    "minimal-ui"
-  ],
-  "description": "Plan your trip budget, then track every expense against it.",
+  "orientation": "landscape-primary",
+  "iarc_rating_id": "3+",
   "categories": [
-    "finance",
     "lifestyle",
     "transportation",
     "travel"
   ],
-  "iarc_rating_id": "3+ "
+  "edge_side_panel": {
+    "preferred_width": 0
+  }
 }
