@@ -1,21 +1,78 @@
 {
   "name": "Travel Budget Manager",
-  "short_name": "Travel Budget",
-  "description": "Build your trip budget before you book, then track every expense against it — every leg, every category, one running total, in 150+ currencies with live exchange rates. Includes an optional AI budget starter (Google Gemini). Available in English, French, and Spanish.",
-  "id": "/Travel-Budget-Manager/",
-  "start_url": "./",
-  "scope": "./",
+  "short_name": "TBM",
+  "start_url": "/",
   "display": "standalone",
-  "orientation": "any",
-  "theme_color": "#0d1117",
-  "background_color": "#0d1117",
-  "lang": "en",
-  "dir": "auto",
-  "categories": ["finance", "travel", "lifestyle"],
-  "prefer_related_applications": false,
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+    {
+      "sizes": "114x114",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-114x114-09ce42d3ca4b.png"
+    },
+    {
+      "sizes": "120x120",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-120x120-92bd46d04241.png"
+    },
+    {
+      "sizes": "144x144",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-144x144-b882e354c005.png"
+    },
+    {
+      "sizes": "152x152",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-152x152-5f777cdc30ae.png"
+    },
+    {
+      "sizes": "180x180",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-180x180-a80b8e11abe2.png"
+    },
+    {
+      "sizes": "57x57",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-57x57-22f09f5b3a64.png"
+    },
+    {
+      "sizes": "60x60",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-60x60-19037ac897bf.png"
+    },
+    {
+      "sizes": "72x72",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-72x72-e090c8a282d0.png"
+    },
+    {
+      "sizes": "76x76",
+      "src": "https://github.githubassets.com/assets/apple-touch-icon-76x76-a4523d80afb4.png"
+    },
+    {
+      "src": "https://github.githubassets.com/assets/app-icon-192-bcc967ab9829.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://github.githubassets.com/assets/app-icon-512-7f9c4ff2e960.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.github.android",
+      "id": "com.github.android"
+    }
+  ],
+  "theme_color": "#da4747",
+  "background_color": "#401212",
+  "id": "Travel Budget Manager",
+  "description": "Travel Budget Manager is a lightweight web app for building a trip budget before you book and keeping it honest while you travel — every leg, every category, one running total, in 150+ currencies with live exchange rates. An optional AI budget starter (Google Gemini) suggests trip ideas and starting budgets. It works in English, French, Spanish.",
+  "dir": "auto",
+  "lang": "en",
+  "orientation": "landscape-primary",
+  "iarc_rating_id": "3+",
+  "categories": [
+    "lifestyle",
+    "transportation",
+    "travel"
+  ],
+  "edge_side_panel": {
+    "preferred_width": 0
+  }
 }
