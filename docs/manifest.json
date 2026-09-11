@@ -1,42 +1,21 @@
 {
   "name": "Travel Budget Manager",
-  "short_name": "Travel Budget Manager",
-  "start_url": "/",
+  "short_name": "Travel Budget",
+  "description": "Build your trip budget before you book, then track every expense against it — every leg, every category, one running total, in 150+ currencies with live exchange rates. Includes an optional AI budget starter (Google Gemini). Available in English, French, and Spanish.",
+  "id": "/Travel-Budget-Manager-V2/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "icons": [
-    {
-      "src": "https://github.githubassets.com/assets/app-icon-192-bcc967ab9829.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "https://github.githubassets.com/assets/app-icon-512-7f9c4ff2e960.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
-  ],
-  "prefer_related_applications": false,
-  "related_applications": [
-    {
-      "platform": "play",
-      "url": "https://play.google.com/store/apps/details?id=com.github.android",
-      "id": "com.github.android"
-    }
-  ],
+  "orientation": "any",
   "theme_color": "#0d1117",
   "background_color": "#0d1117",
-  "id": "/",
-  "description": "Travel Budget Manager is a lightweight web app for building a trip budget before you book and keeping it honest while you travel — every leg, every category, one running total, in 150+ currencies with live exchange rates. An optional AI budget starter (Google Gemini) suggests trip ideas and starting budgets. It works in English, French, Spanish.",
-  "dir": "auto",
   "lang": "en",
-  "orientation": "portrait-primary",
-  "iarc_rating_id": "3+",
-  "categories": [
-    "lifestyle",
-    "transportation",
-    "travel"
-  ],
-  "edge_side_panel": {
-    "preferred_width": 0
-  }
+  "dir": "auto",
+  "categories": ["finance", "travel", "lifestyle"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }
